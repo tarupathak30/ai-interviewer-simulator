@@ -3,11 +3,14 @@ from langgraph.graph.message import add_messages
 
 class InterviewState(TypedDict):
     messages: Annotated[list, add_messages]
-    question: str          # current coding question
-    code: str              # candidate's latest code submission
-    language: str          # python / javascript
-    hints_used: int        # how many hints they've asked for
-    score: int             # 0-100
-    feedback: str          # final written feedback
+    question: str
+    code: str
+    language: str
+    hints_used: int
+    score: int
+    feedback: str
     done: bool
-    followup: str          # follow-up question asked after evaluation
+    followup: str
+    difficulty: str        # "easy" | "medium" | "hard"
+    round: int             # which round we're on (1, 2, 3...)
+    scores_history: list   # track scores across rounds
