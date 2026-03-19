@@ -28,12 +28,9 @@ Built to mimic real-world coding interviews using modern LLM-powered workflows.
 ## 🏗️ Tech Stack
 
 - **Backend:** FastAPI
-- **LLMs / NLP:** OpenAI / LangChain / LangGraph
+- **LLMs / NLP:** GroqAI / LangChain / LangGraph
 - **Execution Engine:** Python sandboxing
 - **Environment:** Uvicorn
-
----
-
 
 ---
 
