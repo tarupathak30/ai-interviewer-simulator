@@ -1,0 +1,42 @@
+# 🐍 Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Environment variables (VERY IMPORTANT)
+.env
+.env.*
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# FastAPI / Uvicorn
+*.sqlite3
+
+# Misc
+*.swp
