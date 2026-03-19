@@ -39,11 +39,13 @@ Built to mimic real-world coding interviews using modern LLM-powered workflows.
 ### 1. Clone the repo
 
 git clone https://github.com/your-username/interview-simulator.git
+
 cd interview-simulator
 
 
 ### 2. Create Virtual Environment 
 python -m venv venv
+
 venv\Scripts\activate   # Windows
 
 
