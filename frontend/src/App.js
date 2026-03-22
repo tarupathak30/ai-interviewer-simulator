@@ -51,7 +51,7 @@ const THEMES = {
 };
 
 
-const API = "https://ai-interviewer-simulator.onrender.com";
+const API = "https://ai-interviewer-simulator.onrender.com/api";
 
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
