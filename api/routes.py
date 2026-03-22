@@ -4,7 +4,7 @@ from app.graph.builder import interview_graph
 from app.tools.code_runner import run_code
 from app.tools.complexity_analyzer import analyze_complexity
 from app.tools.code_quality import analyze_code_quality
-from app.graph.nodes import _pick_question
+from app.tools.report_generator import generate_report
 import uuid
 
 router = APIRouter()
@@ -22,51 +22,98 @@ class SubmitRequest(BaseModel):
     language: str = "python"
 
 
-# Standalone report endpoint
-class ReportRequest(BaseModel):
-    session_id: str
-
-
 def _config(session_id: str):
     return {"configurable": {"thread_id": session_id}}
 
 
-def _pick_next_question(result: dict) -> dict:
-    difficulty = result.get("difficulty", "medium")
-    scores_history = result.get("scores_history", [])
-    return {
-        "difficulty": difficulty,
-        "question": _pick_question(difficulty, scores_history),
-        "message": {
-            "easy":   "Let's try an easier one to build confidence.",
-            "medium": "Good work! Here's a similar challenge.",
-            "hard":   "Impressive! Ready for a harder problem?",
-        }[difficulty]
-    }
+
 
 
 @router.post("/start")
 def start(req: StartRequest):
     sid = req.session_id or str(uuid.uuid4())
     result = interview_graph.invoke({
-        "messages":      [],
-        "code":          "",
-        "language":      "python",
-        "hints_used":    0,
-        "score":         0,
-        "feedback":      "",
-        "done":          False,
-        "difficulty":    "medium",
-        "round":         1,
+        "messages":       [],
+        "code":           "",
+        "language":       "python",
+        "hints_used":     0,
+        "score":          0,
+        "feedback":       "",
+        "done":           False,
+        "difficulty":     "medium",
+        "round":          1,
         "scores_history": [],
-        "followup":      "",
+        "followup":       "",
+        "topic":          "",
+        "subtopic":       "",
+        "hint_1":         "",
+        "hint_2":         "",
+        "hint_3":         "",
+        "used_topics":    [],
     }, _config(sid))
     return {
         "session_id": sid,
         "question":   result["question"],
+        "topic":      result["topic"],
+        "subtopic":   result["subtopic"],
         "difficulty": result["difficulty"],
         "round":      result["round"],
     }
+
+
+@router.post("/next")
+def next_question(req: StartRequest):
+    if not req.session_id:
+        return {"error": "session_id required"}
+
+    state = interview_graph.get_state(_config(req.session_id))
+    if not state or not state.values:
+        return {"error": "Session not found"}
+
+    current        = state.values
+    difficulty     = current.get("difficulty", "medium")
+    scores_history = current.get("scores_history", [])
+    current_round  = current.get("round", 1)
+    used_topics    = current.get("used_topics", [])
+
+    # Add current topic to used list
+    current_topic = current.get("topic", "")
+    if current_topic and current_topic not in used_topics:
+        used_topics = used_topics + [current_topic]
+
+    # Generate fresh LLM question
+    from app.graph.nodes import generate_question
+    q = generate_question(difficulty, used_topics)
+
+    interview_graph.update_state(
+        _config(req.session_id),
+        {
+            "question":   q["question"],
+            "topic":      q["topic"],
+            "subtopic":   q["subtopic"],
+            "hint_1":     q["hint_1"],
+            "hint_2":     q["hint_2"],
+            "hint_3":     q["hint_3"],
+            "used_topics": used_topics,
+            "code":       "",
+            "done":       False,
+            "round":      current_round + 1,
+            "hints_used": 0,
+            "followup":   "",
+            "messages":   [],
+        }
+    )
+
+    return {
+        "session_id":     req.session_id,
+        "question":       q["question"],
+        "topic":          q["topic"],
+        "subtopic":       q["subtopic"],
+        "difficulty":     difficulty,
+        "round":          current_round + 1,
+        "scores_history": scores_history,
+    }
+
 
 
 @router.post("/hint")
@@ -82,49 +129,52 @@ def hint(req: HintRequest):
     return {"hint": last, "hints_used": result["hints_used"]}
 
 
-
-
-
-from app.tools.report_generator import generate_report
-
-# Add this to your existing imports at top of routes.py
-
-
 @router.post("/submit")
 def submit(req: SubmitRequest):
     print(">>>> SUBMIT HIT", req)
 
-    run_result  = run_code(req.code, req.language)
-    complexity  = analyze_complexity(req.code) if req.language == "python" else {
+    # Read current state before invoke
+    state = interview_graph.get_state(_config(req.session_id))
+    current_question   = ""
+    current_round      = 1
+
+    if state and state.values:
+        current_question = state.values.get("question", "")
+        current_round    = state.values.get("round", 1)
+
+    print(f">>> EVALUATING against question: {current_question}")
+
+    run_result = run_code(req.code, req.language)
+    complexity = analyze_complexity(req.code) if req.language == "python" else {
         "time_complexity": "N/A", "space_complexity": "N/A", "reasoning": "Python only"
     }
-    quality     = analyze_code_quality(req.code) if req.language == "python" else {
+    quality = analyze_code_quality(req.code) if req.language == "python" else {
         "quality_score": 0, "issues": [], "suggestions": []
     }
 
+    # ── LangGraph handles evaluate → followup chain ──
     result = interview_graph.invoke(
         {
             "code":     req.code,
             "language": req.language,
-            "messages": [{"role": "user", "content": f"evaluate: {req.code}"}]
+            "messages": [],
         },
         _config(req.session_id)
     )
 
-    # Generate session report
     report = generate_report(
-        session_id    = req.session_id,
-        question      = result.get("question", ""),
-        code          = req.code,
-        scores_history= result.get("scores_history", []),
-        hints_used    = result.get("hints_used", 0),
-        difficulty    = result.get("difficulty", "medium"),
-        complexity    = complexity,
-        quality       = quality,
-        feedback      = result.get("feedback", ""),
-        followup      = result.get("followup", ""),
-        run_result    = run_result,
-        language      = req.language,
+        session_id     = req.session_id,
+        question       = current_question,
+        code           = req.code,
+        scores_history = result.get("scores_history", []),
+        hints_used     = result.get("hints_used", 0),
+        difficulty     = result.get("difficulty", "medium"),
+        complexity     = complexity,
+        quality        = quality,
+        feedback       = result.get("feedback", ""),
+        followup       = result.get("followup", ""),
+        run_result     = run_result,
+        language       = req.language,
     )
 
     return {
@@ -135,13 +185,18 @@ def submit(req: SubmitRequest):
         "complexity":     complexity,
         "quality":        quality,
         "difficulty":     result.get("difficulty", "medium"),
-        "round":          result.get("round", 1),
+        "round":          current_round,
         "scores_history": result.get("scores_history", []),
-        "next_question":  _pick_next_question(result),
-        **report,   # merges "report": {...} into response
+        "next_question": {
+            "difficulty": result.get("difficulty", "medium"),
+            "message": {
+                "easy":   "Let's try an easier one to build confidence.",
+                "medium": "Good work! Here's a similar challenge.",
+                "hard":   "Impressive! Ready for a harder problem?",
+            }.get(result.get("difficulty", "medium"), "Ready for the next one?")
+        },
+        **report,
     }
-
-
 
 @router.get("/report/{session_id}")
 def get_report(session_id: str):
@@ -151,7 +206,7 @@ def get_report(session_id: str):
 
     s = state.values
     complexity = analyze_complexity(s.get("code", "")) if s.get("language", "python") == "python" else {}
-    quality    = analyze_code_quality(s.get("code", ""))  if s.get("language", "python") == "python" else {}
+    quality    = analyze_code_quality(s.get("code", "")) if s.get("language", "python") == "python" else {}
 
     return generate_report(
         session_id     = session_id,

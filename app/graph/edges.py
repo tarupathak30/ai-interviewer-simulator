@@ -1,14 +1,27 @@
 from .state import InterviewState
 
-def route_candidate_action(state: InterviewState) -> str:
-    """
-    Decide what to do next based on the last user message.
-    In a real app this reads from the API request type.
-    """
-    last = state["messages"][-1].content.lower()
-    
-    if "hint" in last:
+def route_entry(state: InterviewState) -> str:
+    """Top-level router — decides if we need to start or continue."""
+    messages = state.get("messages") or []
+    code     = state.get("code", "")
+    question = state.get("question", "")
+
+    # No question yet — fresh session, run start
+    if not question:
+        return "start"
+
+    # Has a hint request
+    if messages and hasattr(messages[-1], 'content') and "hint" in messages[-1].content.lower():
         return "give_hint"
-    if state.get("code"):
+
+    # Has code to evaluate
+    if code:
         return "evaluate"
-    return "wait"   # waiting for candidate to submit code
+
+    return "wait"
+
+
+def route_candidate_action(state: InterviewState) -> str:
+    """After start node — always wait for candidate."""
+    return "wait"
+

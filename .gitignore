@@ -1,42 +1,19 @@
-# 🐍 Python
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual Environment
+# Python
 venv/
-env/
-.venv/
-
-# Environment variables (VERY IMPORTANT)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 .env
-.env.*
 
-# Logs
-*.log
+# Frontend
+node_modules/
+frontend/build/
+frontend/node_modules/
 
-# VS Code
-.vscode/
-
-# Jupyter Notebook
-.ipynb_checkpoints/
-
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
-# Build / packaging
-build/
-dist/
-*.egg-info/
-
-# Test / coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
-# FastAPI / Uvicorn
-*.sqlite3
-
-# Misc
-*.swp
+# Logs
+*.log
