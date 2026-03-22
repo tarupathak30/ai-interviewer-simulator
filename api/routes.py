@@ -121,14 +121,31 @@ def hint(req: HintRequest):
     state = interview_graph.get_state(_config(req.session_id))
     if not state:
         return {"error": "Session not found"}
-    result = interview_graph.invoke(
-        {"messages": [{"role": "user", "content": "hint"}]},
-        _config(req.session_id)
+
+    # Get current hints_used before invoke
+    hints_used_before = state.values.get("hints_used", 0)
+    
+    # Get pre-generated hints directly from state
+    hint_map = {
+        0: state.values.get("hint_1", ""),
+        1: state.values.get("hint_2", ""),
+        2: state.values.get("hint_3", ""),
+    }
+    hint_text = hint_map.get(hints_used_before) or "No more hints available."
+
+    # Update hints_used in state
+    interview_graph.update_state(
+        _config(req.session_id),
+        {"hints_used": hints_used_before + 1}
     )
-    last = result["messages"][-1].content
-    return {"hint": last, "hints_used": result["hints_used"]}
+
+    return {
+        "hint":       hint_text,
+        "hints_used": hints_used_before + 1,
+    }
 
 
+    
 @router.post("/submit")
 def submit(req: SubmitRequest):
     print(">>>> SUBMIT HIT", req)
