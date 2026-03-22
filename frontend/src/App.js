@@ -50,7 +50,9 @@ const THEMES = {
   },
 };
 
-const API = "http://127.0.0.1:8000/api";
+
+const API = "https://ai-interviewer-simulator.onrender.com";
+
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
