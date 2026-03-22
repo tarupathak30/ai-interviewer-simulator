@@ -868,7 +868,7 @@ export default function App() {
             fontSize: 15,
           }}>⚡</div>
           <span style={{ fontSize: 15, fontWeight: 800, color: t.text, letterSpacing: "-0.02em" }}>
-            ProctorAI
+            EvalonAI
           </span>
           <span style={{
             fontSize: 10, fontWeight: 600, color: t.accent,
